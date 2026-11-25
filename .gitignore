@@ -1,0 +1,19 @@
+# Entorno virtual de Python
+venv/
+
+# Datos descargados (pesados; se obtienen con el script de descarga)
+datos/*
+!datos/.gitkeep
+!datos/*.py
+
+# Jupyter y Python
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+# IDEs
+.idea/
+.vscode/
+
+# Documento del encargo (personal, no forma parte del repo)
+proyecto-1-calidad-aire-madrid.md
