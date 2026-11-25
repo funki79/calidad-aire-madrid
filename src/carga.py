@@ -116,8 +116,22 @@ def filtrar_validos(df: pd.DataFrame) -> pd.DataFrame:
     Además, imprime un pequeño resumen: cuántas filas había, cuántas se
     quedan y cuántas se descartan.
     """
-    # TODO (Sergio): escribe aquí el filtro y el resumen
-    raise NotImplementedError("Paso 4 pendiente")
+    # 1) Máscara: una columna de True/False, True donde validez es "V"
+    es_valido = df["validez"] == "V"
+
+    # 2) Filtro: nos quedamos solo con las filas donde la máscara es True
+    validos = df[es_valido]
+
+    # 3) Resumen: contamos filas antes y después
+    total = len(df)
+    quedan = len(validos)
+    descartadas = total - quedan
+    print(f"Filas totales: {total}")
+    print(f"Filas válidas: {quedan}")
+    print(f"Descartadas:   {descartadas} ({descartadas / total:.1%})")
+
+    # 4) Devolvemos la tabla filtrada
+    return validos
 
 
 # --------------------------------------------------------------------------
