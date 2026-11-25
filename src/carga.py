@@ -6,6 +6,10 @@ Flujo:
     2. filtrar_contaminante()   -> se queda con un contaminante (8 = NO2)
     3. pasar_a_formato_largo()  -> una fila por hora en vez de una por día
     4. filtrar_validos()        -> se queda solo con los datos validados ("V")
+    5. anadir_fecha_hora()      -> une fecha y hora en una sola columna
+    7. anadir_estaciones()      -> añade nombre y tipo de cada estación
+
+    cargar_no2() ejecuta todos los pasos seguidos.
 """
 
 from pathlib import Path
@@ -135,6 +139,72 @@ def filtrar_validos(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------
+# Paso 5: una sola columna con la fecha y la hora
+# --------------------------------------------------------------------------
+def anadir_fecha_hora(df: pd.DataFrame) -> pd.DataFrame:
+    """Crea la columna 'fecha_hora' a partir de 'fecha' y 'hora'.
+
+    Según la documentación oficial, H24 es la media de 23:00 a 24:00, así que
+    Hk es la media del intervalo que va de la hora (k-1) a la hora k.
+    Etiquetamos cada dato con el INICIO de su intervalo:
+        H01 -> 00:00   (media de 00:00 a 01:00)
+        H24 -> 23:00   (media de 23:00 a 24:00, mismo día)
+    Así ningún dato "salta" al día siguiente y la hora del día va de 0 a 23.
+
+    Es hora local de Madrid, tal como la publica el Ayuntamiento (sin zona
+    horaria). Los días de cambio de hora tienen 23 o 25 horas; el Ayuntamiento
+    elimina la hora repetida, así que no hay duplicados.
+    """
+    df = df.copy()  # trabajamos sobre una copia para no tocar la tabla original
+    # pd.to_timedelta convierte un número en una duración ("3 horas")
+    df["fecha_hora"] = df["fecha"] + pd.to_timedelta(df["hora"] - 1, unit="h")
+    return df
+
+
+# --------------------------------------------------------------------------
+# Paso 7: nombre y tipo de cada estación
+# --------------------------------------------------------------------------
+def leer_estaciones(ruta: Path = RAIZ / "datos" / "estaciones.csv") -> pd.DataFrame:
+    """Lee el listado oficial de estaciones y deja solo las columnas útiles."""
+    est = pd.read_csv(ruta, sep=";", encoding="utf-8-sig")
+    est = est.rename(columns={
+        "CODIGO_CORTO": "estacion",
+        "ESTACION": "nombre_estacion",
+        "NOM_TIPO": "tipo_estacion",
+        "LATITUD": "latitud",
+        "LONGITUD": "longitud",
+    })
+    return est[["estacion", "nombre_estacion", "tipo_estacion", "latitud", "longitud"]]
+
+
+def anadir_estaciones(df: pd.DataFrame) -> pd.DataFrame:
+    """Añade nombre y tipo de estación (equivale a un BUSCARV en Excel).
+
+    how="left" -> se conservan todas las filas de df aunque una estación no
+    estuviera en el listado (en ese caso el nombre quedaría vacío).
+    """
+    est = leer_estaciones()[["estacion", "nombre_estacion", "tipo_estacion"]]
+    return df.merge(est, on="estacion", how="left")
+
+
+# --------------------------------------------------------------------------
+# Todo seguido
+# --------------------------------------------------------------------------
+def cargar_no2() -> pd.DataFrame:
+    """Devuelve la tabla limpia de NO2 2019-2025, una fila por hora y estación.
+
+    Columnas: fecha_hora, estacion, nombre_estacion, tipo_estacion, valor (µg/m³)
+    """
+    df = leer_csv_horarios()
+    df = filtrar_contaminante(df, magnitud=8)
+    df = pasar_a_formato_largo(df)
+    df = filtrar_validos(df)
+    df = anadir_fecha_hora(df)
+    df = anadir_estaciones(df)
+    return df[["fecha_hora", "estacion", "nombre_estacion", "tipo_estacion", "valor"]]
+
+
+# --------------------------------------------------------------------------
 # Prueba rápida: ejecuta este archivo (botón Run de PyCharm o
 # `python src/carga.py` desde la raíz) para ver cada paso.
 # --------------------------------------------------------------------------
@@ -151,4 +221,11 @@ if __name__ == "__main__":
 
     validos = filtrar_validos(largo)
     print("Paso 4 - filas válidas:", len(validos))
-    print(validos.head())
+
+    con_fecha = anadir_fecha_hora(validos)
+    print("Paso 5 - primeras horas de un día:")
+    print(con_fecha.sort_values(["estacion", "fecha_hora"]).head(3))
+
+    final = anadir_estaciones(con_fecha)
+    print("Paso 7 - estaciones sin nombre:", final["nombre_estacion"].isna().sum())
+    print(final.head())
