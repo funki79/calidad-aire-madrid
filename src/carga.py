@@ -112,7 +112,7 @@ def pasar_a_formato_largo(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------
-# Paso 4: quedarnos solo con los datos válidos  ->  LO ESCRIBE SERGIO
+# Paso 4: quedarnos solo con los datos válidos
 # --------------------------------------------------------------------------
 def filtrar_validos(df: pd.DataFrame) -> pd.DataFrame:
     """Devuelve solo las filas cuya columna 'validez' es "V".
